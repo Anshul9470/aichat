@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import fetch from "node-fetch";
+import fetch from "node-fetch"
 
 dotenv.config();
 
@@ -46,7 +46,7 @@ app.post("/chat", async (req, res) => {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -55,19 +55,23 @@ app.post("/chat", async (req, res) => {
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          temperature: 0.7,
         }),
       }
     );
 
     const data = await response.json();
+    console.log("GROQ RESPONSE 👉", data); // 🔥 IMPORTANT
 
-    const reply =
-      data?.choices?.[0]?.message?.content || "❌ No response from AI";
+    const reply = data?.choices?.[0]?.message?.content;
+
+    if (!reply) {
+      return res.json({ reply: "❌ AI did not return any text" });
+    }
 
     res.json({ reply });
-  } catch (error) {
-    console.error("🔥 ERROR:", error);
+
+  } catch (err) {
+    console.error("🔥 CHAT ERROR:", err);
     res.status(500).json({ reply: "❌ Server error" });
   }
 });
