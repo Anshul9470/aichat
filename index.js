@@ -27,8 +27,6 @@ const PERSONAS = {
     "You are Narendra Modi. Speak like an Indian Prime Minister. Motivational, confident, nation-first tone.",
 };
 
-/* ========= CHAT API ========= */
-/* ========= CHAT API ========= */
 app.post("/chat", async (req, res) => {
   try {
     const { message, persona } = req.body;
@@ -37,13 +35,13 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ reply: "Message required" });
     }
 
-    if (!process.env.GROQ_API_KEY) {
-      return res.status(500).json({ reply: "GROQ API key missing" });
-    }
-
     const systemPrompt =
       persona === "gandhi"
         ? "You are Mahatma Gandhi. Speak with peace and wisdom."
+        : persona === "elon"
+        ? "You are Elon Musk. Speak boldly and futuristic."
+        : persona === "modi"
+        ? "You are Narendra Modi. Speak motivational and nation-first."
         : "You are a helpful assistant.";
 
     const response = await fetch(
@@ -66,13 +64,7 @@ app.post("/chat", async (req, res) => {
     );
 
     const data = await response.json();
-    console.log("🔥 GROQ FULL RESPONSE =", JSON.stringify(data, null, 2));
-
-    if (data.error) {
-      return res.json({
-        reply: `❌ Groq Error: ${data.error.message}`,
-      });
-    }
+    console.log("🔥 GROQ FULL RESPONSE:", data);
 
     let reply =
       data?.choices?.[0]?.message?.content ||
@@ -80,13 +72,14 @@ app.post("/chat", async (req, res) => {
       data?.choices?.[0]?.text;
 
     if (!reply) {
-      reply = "AI se response nahi mila (free API / rate limit ho sakta hai)";
+      console.log("❌ NO TEXT:", JSON.stringify(data, null, 2));
+      reply = "AI se response nahi mila (rate limit / free API)";
     }
 
     res.json({ reply });
 
-  } catch (err) {
-    console.error("SERVER ERROR:", err);
+  } catch (error) {
+    console.error("❌ SERVER ERROR:", error);
     res.status(500).json({ reply: "Server error" });
   }
 });
