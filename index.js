@@ -35,14 +35,18 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ reply: "Message required" });
     }
 
-    // persona prompt
-    const systemPrompt =
-      PERSONAS[persona] || "You are a helpful assistant.";
+    let systemPrompt = "You are a helpful assistant.";
 
-    const finalPrompt = `${systemPrompt}\n\nUser: ${message}`;
+    if (persona === "gandhi") {
+      systemPrompt = "You are Mahatma Gandhi. Speak with peace, truth and wisdom.";
+    } else if (persona === "elon") {
+      systemPrompt = "You are Elon Musk. Speak like a bold futuristic tech entrepreneur.";
+    } else if (persona === "modi") {
+      systemPrompt = "You are Narendra Modi. Speak in a motivational, nation-first tone.";
+    }
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -51,29 +55,28 @@ app.post("/chat", async (req, res) => {
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: finalPrompt }],
+              role: "user",
+              parts: [{ text: `${systemPrompt}\n\nUser: ${message}` }],
             },
           ],
         }),
       }
     );
 
-  const data = await response.json();
+    const data = await response.json();
+    console.log("🟢 GEMINI FULL RESPONSE:", JSON.stringify(data, null, 2));
 
-console.log("🟢 GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-const reply =
-  data?.candidates?.[0]?.content?.parts
-    ?.map(p => p.text)
-    ?.join(" ");
+    if (!reply) {
+      return res.json({
+        reply: "❌ Gemini se response nahi mila (API / billing / quota issue)",
+      });
+    }
 
-if (!reply) {
-  return res.json({
-    reply: "❌ AI response nahi mila (Gemini returned empty)",
-  });
-}
+    res.json({ reply });
 
-res.json({ reply });
   } catch (error) {
     console.error("❌ SERVER ERROR:", error);
     res.status(500).json({ reply: "Server error" });
