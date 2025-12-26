@@ -46,32 +46,33 @@ app.post("/chat", async (req, res) => {
     }
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      "https://openrouter.ai/api/v1/chat/completions",
       {
         method: "POST",
         headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
+          "HTTP-Referer": "http://localhost:3000", // optional
+          "X-Title": "AI Chat Project", // optional
         },
         body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `${systemPrompt}\n\nUser: ${message}` }],
-            },
+          model: "mistralai/mistral-7b-instruct", // ✅ FREE MODEL
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: message }
           ],
         }),
       }
     );
 
     const data = await response.json();
-    console.log("🟢 GEMINI FULL RESPONSE:", JSON.stringify(data, null, 2));
+    console.log("🟢 OPENROUTER FULL RESPONSE:", JSON.stringify(data, null, 2));
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const reply = data?.choices?.[0]?.message?.content;
 
     if (!reply) {
       return res.json({
-        reply: "❌ Gemini se response nahi mila (API / billing / quota issue)",
+        reply: "❌ OpenRouter se response nahi mila (rate limit / model busy)",
       });
     }
 
