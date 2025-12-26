@@ -28,12 +28,17 @@ const PERSONAS = {
 };
 
 /* ========= CHAT API ========= */
+/* ========= CHAT API ========= */
 app.post("/chat", async (req, res) => {
   try {
     const { message, persona } = req.body;
 
     if (!message) {
       return res.status(400).json({ reply: "Message required" });
+    }
+
+    if (!process.env.GROQ_API_KEY) {
+      return res.status(500).json({ reply: "GROQ API key missing" });
     }
 
     const systemPrompt =
@@ -46,45 +51,36 @@ app.post("/chat", async (req, res) => {
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: "llama3-8b-8192",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: message }
+            { role: "user", content: message },
           ],
-          temperature: 0.7
-        })
+          temperature: 0.7,
+        }),
       }
     );
 
     const data = await response.json();
-
-    console.log("🔥 GROQ FULL RESPONSE =", data);
-    let reply =
-  data?.choices?.[0]?.message?.content ||
-  data?.choices?.[0]?.delta?.content ||
-  data?.choices?.[0]?.text;
-
-if (!reply) {
-  console.log("❌ NO TEXT — FULL RESPONSE:", JSON.stringify(data, null, 2));
-  reply = "AI se response nahi mila (free API / rate limit ho sakta hai)";
-}
-
-res.json({ reply });
+    console.log("🔥 GROQ FULL RESPONSE =", JSON.stringify(data, null, 2));
 
     if (data.error) {
       return res.json({
-        reply: `❌ Groq Error: ${data.error.message}`
+        reply: `❌ Groq Error: ${data.error.message}`,
       });
     }
 
-    const reply = data?.choices?.[0]?.message?.content;
+    let reply =
+      data?.choices?.[0]?.message?.content ||
+      data?.choices?.[0]?.delta?.content ||
+      data?.choices?.[0]?.text;
 
     if (!reply) {
-      return res.json({ reply: "❌ AI did not return text" });
+      reply = "AI se response nahi mila (free API / rate limit ho sakta hai)";
     }
 
     res.json({ reply });
