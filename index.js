@@ -10,9 +10,8 @@ const app = express();
 /* ========= MIDDLEWARE ========= */
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
 
-/* ========= ROOT ROUTE ========= */
+/* ========= ROOT ========= */
 app.get("/", (req, res) => {
   res.send("🚀 AI Chat Backend is running successfully");
 });
@@ -27,6 +26,7 @@ const PERSONAS = {
     "You are Narendra Modi. Speak like an Indian Prime Minister. Motivational, confident, nation-first tone.",
 };
 
+/* ========= CHAT API ========= */
 app.post("/chat", async (req, res) => {
   try {
     const { message, persona } = req.body;
@@ -35,57 +35,51 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ reply: "Message required" });
     }
 
-    let systemPrompt = "You are a helpful assistant.";
+    // persona prompt
+    const systemPrompt =
+      PERSONAS[persona] || "You are a helpful assistant.";
 
-    if (persona === "gandhi") {
-      systemPrompt = "You are Mahatma Gandhi. Speak with peace, truth and wisdom.";
-    } else if (persona === "elon") {
-      systemPrompt = "You are Elon Musk. Speak like a bold futuristic tech entrepreneur.";
-    } else if (persona === "modi") {
-      systemPrompt = "You are Narendra Modi. Speak in a motivational, nation-first tone.";
-    }
+    const finalPrompt = `${systemPrompt}\n\nUser: ${message}`;
 
     const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: message }
+          contents: [
+            {
+              parts: [{ text: finalPrompt }],
+            },
           ],
-          temperature: 0.7
-        })
+        }),
       }
     );
 
     const data = await response.json();
-    console.log("🟢 GROQ FULL RESPONSE:", data);
 
-    const reply = data?.choices?.[0]?.message?.content;
+    console.log("🟢 GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!reply) {
       return res.json({
-        reply: "❌ AI se response nahi mila (rate limit / API issue ho sakta hai)"
+        reply: "❌ AI response nahi mila (quota / API issue)",
       });
     }
 
     res.json({ reply });
-
   } catch (error) {
     console.error("❌ SERVER ERROR:", error);
     res.status(500).json({ reply: "Server error" });
   }
 });
+
 /* ========= SERVER ========= */
 const PORT = process.env.PORT || 10000;
-
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
-// github force update
