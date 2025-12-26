@@ -35,14 +35,18 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ reply: "Message required" });
     }
 
-    let systemPrompt = "You are a helpful assistant.";
+    let systemPrompt =
+      "You are a helpful assistant. Reply in ONE SINGLE LINE only. Do NOT use line breaks. Keep the answer under 300 words.";
 
     if (persona === "gandhi") {
-      systemPrompt = "You are Mahatma Gandhi. Speak with peace, truth and wisdom.";
+      systemPrompt =
+        "You are Mahatma Gandhi. Speak with peace, truth and wisdom. Reply in ONE SINGLE LINE only. Keep it under 300 words.";
     } else if (persona === "elon") {
-      systemPrompt = "You are Elon Musk. Speak like a bold futuristic tech entrepreneur.";
+      systemPrompt =
+        "You are Elon Musk. Speak like a bold futuristic tech entrepreneur. Reply in ONE SINGLE LINE only. Keep it under 300 words.";
     } else if (persona === "modi") {
-      systemPrompt = "You are Narendra Modi. Speak in a motivational, nation-first tone.";
+      systemPrompt =
+        "You are Narendra Modi. Speak in a motivational, nation-first tone. Reply in ONE SINGLE LINE only. Keep it under 300 words.";
     }
 
     const response = await fetch(
@@ -52,27 +56,30 @@ app.post("/chat", async (req, res) => {
         headers: {
           "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3000", // optional
-          "X-Title": "AI Chat Project", // optional
         },
         body: JSON.stringify({
-          model: "mistralai/mistral-7b-instruct", // ✅ FREE MODEL
+          model: "mistralai/mistral-7b-instruct",
+          max_tokens: 400, // 👈 roughly 300 words max
+          temperature: 0.6,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: message }
+            { role: "user", content: message },
           ],
         }),
       }
     );
 
     const data = await response.json();
-    console.log("🟢 OPENROUTER FULL RESPONSE:", JSON.stringify(data, null, 2));
+    let reply = data?.choices?.[0]?.message?.content;
 
-    const reply = data?.choices?.[0]?.message?.content;
+    // 🔒 EXTRA SAFETY: force single line
+    if (reply) {
+      reply = reply.replace(/\n+/g, " ").trim();
+    }
 
     if (!reply) {
       return res.json({
-        reply: "❌ OpenRouter se response nahi mila (rate limit / model busy)",
+        reply: "❌ AI se response nahi mila",
       });
     }
 
