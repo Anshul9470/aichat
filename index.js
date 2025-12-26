@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import fetch from "node-fetch"
+import fetch from "node-fetch";
 
 dotenv.config();
 
@@ -9,7 +9,8 @@ const app = express();
 
 /* ========= MIDDLEWARE ========= */
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 
 /* ========= ROOT ROUTE ========= */
 app.get("/", (req, res) => {
@@ -32,14 +33,13 @@ app.post("/chat", async (req, res) => {
     const { message, persona } = req.body;
 
     if (!message) {
-      return res.status(400).json({ reply: "❌ Message is required" });
+      return res.status(400).json({ reply: "Message required" });
     }
 
-    if (!process.env.GROQ_API_KEY) {
-      return res.status(500).json({ reply: "❌ GROQ API key missing" });
-    }
-
-    const systemPrompt = PERSONAS[persona] || PERSONAS.gandhi;
+    const systemPrompt =
+      persona === "gandhi"
+        ? "You are Mahatma Gandhi. Speak with peace and wisdom."
+        : "You are a helpful assistant.";
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -47,35 +47,53 @@ app.post("/chat", async (req, res) => {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           model: "llama3-8b-8192",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: message },
+            { role: "user", content: message }
           ],
-        }),
+          temperature: 0.7
+        })
       }
     );
 
     const data = await response.json();
-    console.log("GROQ RESPONSE 👉", data); // 🔥 IMPORTANT
+
+    console.log("🔥 GROQ FULL RESPONSE =", data);
+    let reply =
+  data?.choices?.[0]?.message?.content ||
+  data?.choices?.[0]?.delta?.content ||
+  data?.choices?.[0]?.text;
+
+if (!reply) {
+  console.log("❌ NO TEXT — FULL RESPONSE:", JSON.stringify(data, null, 2));
+  reply = "AI se response nahi mila (free API / rate limit ho sakta hai)";
+}
+
+res.json({ reply });
+
+    if (data.error) {
+      return res.json({
+        reply: `❌ Groq Error: ${data.error.message}`
+      });
+    }
 
     const reply = data?.choices?.[0]?.message?.content;
 
     if (!reply) {
-      return res.json({ reply: "❌ AI did not return any text" });
+      return res.json({ reply: "❌ AI did not return text" });
     }
 
     res.json({ reply });
 
   } catch (err) {
-    console.error("🔥 CHAT ERROR:", err);
-    res.status(500).json({ reply: "❌ Server error" });
+    console.error("SERVER ERROR:", err);
+    res.status(500).json({ reply: "Server error" });
   }
 });
-
 /* ========= SERVER ========= */
 const PORT = process.env.PORT || 10000;
 
