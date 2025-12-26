@@ -35,45 +35,44 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ reply: "Message required" });
     }
 
-    const systemPrompt =
-      persona === "gandhi"
-        ? "You are Mahatma Gandhi. Speak with peace and wisdom."
-        : persona === "elon"
-        ? "You are Elon Musk. Speak boldly and futuristic."
-        : persona === "modi"
-        ? "You are Narendra Modi. Speak motivational and nation-first."
-        : "You are a helpful assistant.";
+    let systemPrompt = "You are a helpful assistant.";
+
+    if (persona === "gandhi") {
+      systemPrompt = "You are Mahatma Gandhi. Speak with peace, truth and wisdom.";
+    } else if (persona === "elon") {
+      systemPrompt = "You are Elon Musk. Speak like a bold futuristic tech entrepreneur.";
+    } else if (persona === "modi") {
+      systemPrompt = "You are Narendra Modi. Speak in a motivational, nation-first tone.";
+    }
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           model: "llama3-8b-8192",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: message },
+            { role: "user", content: message }
           ],
-          temperature: 0.7,
-        }),
+          temperature: 0.7
+        })
       }
     );
 
     const data = await response.json();
-    console.log("🔥 GROQ FULL RESPONSE:", data);
+    console.log("🟢 GROQ FULL RESPONSE:", data);
 
-    let reply =
-      data?.choices?.[0]?.message?.content ||
-      data?.choices?.[0]?.delta?.content ||
-      data?.choices?.[0]?.text;
+    const reply = data?.choices?.[0]?.message?.content;
 
     if (!reply) {
-      console.log("❌ NO TEXT:", JSON.stringify(data, null, 2));
-      reply = "AI se response nahi mila (rate limit / free API)";
+      return res.json({
+        reply: "❌ AI se response nahi mila (rate limit / API issue ho sakta hai)"
+      });
     }
 
     res.json({ reply });
