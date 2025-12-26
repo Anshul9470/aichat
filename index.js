@@ -58,20 +58,22 @@ app.post("/chat", async (req, res) => {
       }
     );
 
-    const data = await response.json();
+  const data = await response.json();
 
-    console.log("🟢 GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+console.log("🟢 GEMINI RESPONSE:", JSON.stringify(data, null, 2));
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text;
+const reply =
+  data?.candidates?.[0]?.content?.parts
+    ?.map(p => p.text)
+    ?.join(" ");
 
-    if (!reply) {
-      return res.json({
-        reply: "❌ AI response nahi mila (quota / API issue)",
-      });
-    }
+if (!reply) {
+  return res.json({
+    reply: "❌ AI response nahi mila (Gemini returned empty)",
+  });
+}
 
-    res.json({ reply });
+res.json({ reply });
   } catch (error) {
     console.error("❌ SERVER ERROR:", error);
     res.status(500).json({ reply: "Server error" });
